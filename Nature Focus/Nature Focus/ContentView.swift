@@ -12,7 +12,8 @@ struct ContentView: View {
     @StateObject private var sessionManager = SessionManager()
     @FocusState private var isFocused: Bool
     @State private var showForestView = false
-    
+    @State private var showStatsView = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -33,9 +34,26 @@ struct ContentView: View {
                 )
             
             VStack(spacing: Theme.spacing.xxl) {
-                // Forest View Button
-                HStack {
+                // Navigation Buttons
+                HStack(spacing: Theme.spacing.sm) {
                     Spacer()
+
+                    Button(action: {
+                        showStatsView = true
+                    }) {
+                        HStack(spacing: Theme.spacing.xs) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Stats")
+                                .font(Theme.typography.body())
+                        }
+                        .foregroundColor(Theme.colors.charcoal)
+                        .padding(.horizontal, Theme.spacing.md)
+                        .padding(.vertical, Theme.spacing.sm)
+                        .background(Theme.colors.softCream.opacity(0.9))
+                        .cornerRadius(Theme.borderRadiusMedium)
+                    }
+
                     Button(action: {
                         showForestView = true
                     }) {
@@ -51,21 +69,22 @@ struct ContentView: View {
                         .background(Theme.colors.softCream.opacity(0.9))
                         .cornerRadius(Theme.borderRadiusMedium)
                     }
-                    .padding(.trailing, Theme.spacing.screenMargin)
-                    .padding(.top, Theme.spacing.md)
                 }
+                .padding(.trailing, Theme.spacing.screenMargin)
+                .padding(.top, Theme.spacing.md)
                 
                 Spacer()
                 
                 // Tree Visualization with Circular Progress Widget
                 CircularProgressWidget(
                     duration: timerManager.adjustableDuration,
-                    progress: timerManager.getProgress()
+                    progress: timerManager.getProgress(),
+                    isRunning: timerManager.isRunning
                 ) {
-                    TreeView(
-                        progress: timerManager.getProgress(),
-                        isActive: timerManager.isRunning
-                    )
+                    Image("tree")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 120, height: 120)
                 }
                 
                 // Timer Display
@@ -73,29 +92,7 @@ struct ContentView: View {
                     timeRemaining: timerManager.isIdle ? timerManager.adjustableDuration : timerManager.timeRemaining,
                     isActive: timerManager.isRunning
                 )
-                
-                // Duration Display (when idle)
-                if timerManager.isIdle {
-                    VStack(spacing: Theme.spacing.sm) {
-                        HStack(spacing: Theme.spacing.md) {
-                            Image(systemName: "arrow.up")
-                                .foregroundColor(Theme.colors.lightSage)
-                            Text("\(Int(timerManager.adjustableDuration / 60)) min")
-                                .font(Theme.typography.bodyLarge())
-                                .foregroundColor(Theme.colors.charcoal)
-                            Image(systemName: "arrow.down")
-                                .foregroundColor(Theme.colors.lightSage)
-                        }
-                        .padding()
-                        .background(Theme.colors.softCream.opacity(0.9))
-                        .cornerRadius(Theme.borderRadiusMedium)
-                        
-                        Text("↑↓ to adjust, Enter to start")
-                            .font(Theme.typography.caption())
-                            .foregroundColor(Theme.colors.mediumGray)
-                    }
-                }
-                
+
                 // Control Buttons
                 VStack(spacing: Theme.spacing.md) {
                     if timerManager.isIdle {
@@ -122,21 +119,10 @@ struct ContentView: View {
                         }
                     } else if timerManager.state == .completed {
                         VStack(spacing: Theme.spacing.lg) {
-                            Text("Great job! 🌳")
+                            Text("Great job!")
                                 .font(Theme.typography.pageTitle())
                                 .foregroundColor(Theme.colors.grassGreen)
-                            
-                            HStack(spacing: Theme.spacing.sm) {
-                                Image(systemName: "bitcoinsign.circle.fill")
-                                    .foregroundColor(Theme.colors.goldenYellow)
-                                Text("\(timerManager.coinsEarned) coins earned!")
-                                    .font(Theme.typography.bodyLarge())
-                                    .foregroundColor(Theme.colors.charcoal)
-                            }
-                            .padding()
-                            .background(Theme.colors.softCream)
-                            .cornerRadius(Theme.borderRadiusLarge)
-                            
+
                             PlantButton(action: {
                                 timerManager.stopSession()
                             }, isActive: false)
@@ -175,6 +161,9 @@ struct ContentView: View {
             .navigationDestination(isPresented: $showForestView) {
                 ForestGridView()
             }
+            .navigationDestination(isPresented: $showStatsView) {
+                StatsView()
+            }
         }
     }
     
@@ -199,9 +188,9 @@ struct ContentView: View {
                 return .handled
             }
         default:
-            // Handle "r" key for restart
+            // Handle "r" key to cancel and return to idle
             if keyPress.characters == "r" || keyPress.characters == "R" {
-                timerManager.restartSession()
+                timerManager.stopSession()
                 return .handled
             }
         }

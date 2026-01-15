@@ -10,75 +10,89 @@ import SwiftUI
 struct CircularProgressWidget<Content: View>: View {
     let duration: TimeInterval // Current timer duration setting (in seconds)
     let progress: Double // Progress through current session (0.0 to 1.0)
+    let isRunning: Bool // Whether timer is actively running
     let content: Content
-    
+
     @State private var animatedProgress: Double = 0
-    
-    init(duration: TimeInterval, progress: Double, @ViewBuilder content: () -> Content) {
+
+    init(duration: TimeInterval, progress: Double, isRunning: Bool, @ViewBuilder content: () -> Content) {
         self.duration = duration
         self.progress = progress
+        self.isRunning = isRunning
         self.content = content()
     }
-    
+
     var body: some View {
         ZStack {
-            // Content (TreeView)
+            // Content (Tree image)
             content
-            
-            // Circular progress ring
+
+            // Background ring (unfilled portion)
             Circle()
                 .stroke(
                     Theme.colors.lightSage.opacity(0.3),
                     style: StrokeStyle(lineWidth: 8, lineCap: .round)
                 )
                 .frame(width: 200, height: 200)
-            
-            // Active duration arc (shows how much of 60 minutes is set)
+
+            // Progress ring
             Circle()
-                .trim(from: 0, to: durationArc)
+                .trim(from: 0, to: displayProgress)
                 .stroke(
-                    Theme.colors.forestGreen.opacity(0.5),
+                    Theme.colors.grassGreen,
                     style: StrokeStyle(lineWidth: 8, lineCap: .round)
                 )
                 .frame(width: 200, height: 200)
                 .rotationEffect(.degrees(-90)) // Start from top
-            
-            // Progress fill (fills the active portion as timer runs)
-            if progress > 0 {
-                Circle()
-                    .trim(from: 0, to: progressArc)
-                    .stroke(
-                        Theme.colors.grassGreen,
-                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                    )
-                    .frame(width: 200, height: 200)
-                    .rotationEffect(.degrees(-90)) // Start from top
-                    .animation(.linear(duration: 1.0), value: animatedProgress)
-            }
+                .animation(.linear(duration: 0.3), value: displayProgress)
         }
         .onChange(of: progress) { newValue in
-            animatedProgress = newValue
+            if isRunning {
+                animatedProgress = newValue
+            }
+        }
+        .onChange(of: isRunning) { newValue in
+            if newValue {
+                // Session started - reset to track progress
+                animatedProgress = progress
+            }
         }
         .onAppear {
             animatedProgress = progress
         }
     }
-    
-    // Calculate the arc for the duration setting (out of 60 minutes)
-    private var durationArc: CGFloat {
-        let minutes = duration / 60.0
-        return min(CGFloat(minutes / 60.0), 1.0) // Max 1.0 (full circle)
-    }
-    
-    // Calculate the progress arc (fills the active duration portion)
-    private var progressArc: CGFloat {
-        return durationArc * CGFloat(progress)
+
+    // Before session: show duration as fraction of 60 min
+    // During session: show session progress (0→1)
+    private var displayProgress: Double {
+        if isRunning || progress > 0 {
+            // During/after session: show actual progress
+            return animatedProgress
+        } else {
+            // Before session (idle): show duration as fraction of 60 minutes
+            let minutes = duration / 60.0
+            return min(minutes / 60.0, 1.0)
+        }
     }
 }
 
 #Preview {
-    CircularProgressWidget(duration: 15 * 60, progress: 0.5) {
-        TreeView(progress: 0.5, isActive: true)
+    VStack(spacing: 40) {
+        // Idle state - shows 15 min as quarter circle
+        CircularProgressWidget(duration: 15 * 60, progress: 0, isRunning: false) {
+            Image("tree")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120, height: 120)
+        }
+
+        // Running state - shows progress
+        CircularProgressWidget(duration: 15 * 60, progress: 0.5, isRunning: true) {
+            Image("tree")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120, height: 120)
+        }
     }
     .padding()
 }

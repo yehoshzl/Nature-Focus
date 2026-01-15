@@ -20,7 +20,6 @@ struct PlantButton: View {
                     .font(Theme.typography.button())
             }
             .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
             .padding(.vertical, Theme.spacing.buttonPaddingV)
             .padding(.horizontal, Theme.spacing.buttonPaddingH)
             .background(Theme.colors.forestGreen)
