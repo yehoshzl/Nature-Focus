@@ -17,8 +17,11 @@ struct TreePosition: Identifiable {
 
 struct ForestGridView: View {
     @StateObject private var sessionManager = SessionManager()
+    @StateObject private var introManager = IntroSequenceManager()
     @State private var todaySessions: [FocusSession] = []
     @State private var showTrees = false
+    @State private var hasCompletedIntro = false
+    @State private var showDebugOverlay = false
 
     // Predefined tree positions in the meadow area (relative coordinates 0-1)
     // Positions are arranged to look natural, with depth-based scaling
@@ -66,6 +69,40 @@ struct ForestGridView: View {
     }()
 
     var body: some View {
+        ZStack {
+            if !hasCompletedIntro {
+                // Show intro sequence
+                ForestIntroView(
+                    introManager: introManager,
+                    showDebugOverlay: $showDebugOverlay,
+                    onComplete: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            hasCompletedIntro = true
+                        }
+                    }
+                )
+            } else {
+                // Show main forest view after intro
+                forestContentView
+            }
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            loadTodaySessions()
+            if !hasCompletedIntro {
+                // Start intro with tree count based on today's sessions (3-10 trees)
+                let treeCount = max(3, min(todaySessions.count, 10))
+                introManager.startIntro(treeCount: treeCount)
+            }
+        }
+        .onDisappear {
+            introManager.stop()
+        }
+    }
+
+    // MARK: - Forest Content View (shown after intro)
+
+    private var forestContentView: some View {
         GeometryReader { geometry in
             ZStack {
                 // Full-screen forest background
@@ -95,9 +132,7 @@ struct ForestGridView: View {
                 }
             }
         }
-        .ignoresSafeArea()
         .onAppear {
-            loadTodaySessions()
             withAnimation {
                 showTrees = true
             }
